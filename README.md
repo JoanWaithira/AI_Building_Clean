@@ -49,3 +49,16 @@ my-building/                Frontend application
 .github/workflows/          CI/CD workflows
 
 Njoroge, J. (2026). Gate Building AI (Version v1.0.1) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.20266995
+
+Author
+
+Joan Njoroge
+MSc Geo-information Science and Earth Observation
+University of Twente
+
+Supervisors
+Dr. Mila Koeva, University of Twente
+Dr. Mahdi Farnaghi, University of Twente
+License
+
+This project is intended for academic and research purposes.
