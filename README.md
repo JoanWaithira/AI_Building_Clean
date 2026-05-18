@@ -48,3 +48,4 @@ mcpserver/                  MCP tools and AI integration
 my-building/                Frontend application
 .github/workflows/          CI/CD workflows
 
+Njoroge, J. (2026). Gate Building AI (Version v1.0.1) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.20266995
