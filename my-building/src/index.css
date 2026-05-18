@@ -1,0 +1,510 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14,32,100..900&display=swap');
+
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+
+}
+body{
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+  background: #0a0f1a;
+}
+
+/* Hide default Cesium Ion watermark & credit bar */
+.cesium-credit-logoContainer,
+.cesium-credit-textContainer,
+.cesium-viewer-bottom{
+  display: none !important;
+}
+
+.chatbot-popup{
+  position:fixed;
+  bottom: 20px;
+  right: 20px;
+  opacity: 0;
+  pointer-events: none;
+  width: 340px;
+  background: #fff;
+  border-radius: 23px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.container{
+  position: relative;
+}
+.container .show-chatbot .chatbot-popup{
+  opacity:1 ;
+  pointer-events: auto;
+  display: flex;
+}
+
+
+#chatbot-toggler{
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  height: 40px;
+  width: 40px;
+  border-radius: 50%;
+  background: #6D4FC2;
+  color: #fff;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+#chatbot-toggler span{
+  position: absolute;
+  font-size: 20px;
+  transition: 0.3s ease;
+  color: #fff;
+}
+/* Popup hidden by default */
+.chat-popup {
+  position: fixed;
+  bottom: 30px;          /* sits above the toggle button */
+  right: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px) scale(0.98);
+  transition: 0.2s ease;
+  z-index: 1100;
+
+  width: 340px;
+  background: #fff;
+  border-radius: 23px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Show when container has show-chatbot */
+.container.show-chatbot .chat-popup {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+/* Toggle button */
+#chatbot-toggler {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  height: 40px;
+  width: 40px;
+  border-radius: 50%;
+  background: #6D4FC2;
+  color: #fff;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  z-index: 1200;
+}
+
+/* Both icons stacked; we fade/rotate them */
+#chatbot-toggler span {
+  position: absolute;
+  font-size: 20px;
+  transition: 0.2s ease;
+  color: #fff;
+}
+
+/* default: show open icon, hide close icon */
+#chatbot-toggler .icon-open {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+#chatbot-toggler .icon-close {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.8);
+}
+
+/* when open: hide open icon, show close icon */
+.container.show-chatbot #chatbot-toggler .icon-open {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.8);
+}
+.container.show-chatbot #chatbot-toggler .icon-close {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+
+.chat-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #6D4FC2;
+}
+.chat-header .header-info{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.header-info svg{
+  height: 28px;
+  width: 28px;
+  padding: 5px;
+  flex-shrink: 0;
+  fill: #6D4FC2;
+  background: #fff;
+  border-radius: 50%;
+}
+.header-info .logo{
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+.chat-header button{
+  height: 32px;
+  width: 32px;
+  border: none;
+  outline: none;
+  background: #6D4FC2;
+  color: #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  margin-right: -10px;
+}
+
+.chat-header button:hover{
+  background: #593bab;
+}
+.chat-body{
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 300px;
+  overflow-y: auto;
+  background: #fff;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
+}
+.chat-body::-webkit-scrollbar{
+  width: 6px;
+}
+.chat-body::-webkit-scrollbar-thumb{
+  background-color: #ccc;
+  border-radius: 3px;
+}
+.chat-body .message{
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.chat-body .bot-message svg{
+  height: 24px;
+  width: 24px;
+  padding: 4px;
+  margin-bottom: 2px;
+  align-self: flex-end;
+  flex-shrink: 0;
+  fill: #fff;
+  background: #6D4FC2;
+  border-radius: 50%;
+}
+.chat-body .message .message-text{
+  padding: 8px 12px;
+  max-width: 80%;
+  font-size: 13px;
+  color: #000;
+  word-wrap: break-word;
+  white-space: pre-line;
+  border-radius: 10px;
+}
+.chat-body .bot-message .message-text{
+  background: #f6f2ff;
+  border-radius: 13px 13px 13px 3px;
+}
+.chat-body .user-message{
+  flex-direction: column;
+  align-items: flex-end;
+}
+.chat-body .user-message .message-text{
+  background: #6D4FC2;
+  border-radius: 13px 13px 3px 13px;
+  color: #fff;
+}
+/* User bubble (purple) */
+.chat-body .user-message .message-text{
+  background: #6D4FC2;
+  color: #fff;
+  border-radius: 14px 14px 6px 14px;
+}
+
+/* Footer */
+
+/* User bubble (only ONE rule — removed duplicate) */
+.chat-body .user-message .message-text{
+  background: #6D4FC2;
+  color: #fff;
+  border-radius: 14px 14px 6px 14px;
+}
+
+/* Footer */
+.chat-footer{
+  width: 100%;
+  padding: 14px 16px;
+  background: #fff;
+  border-top: 1px solid #eee;
+}
+
+/* Input pill */
+.chat-footer .chat-form{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: #f3f3f7;
+  border-radius: 999px;
+  padding: 10px 12px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+}
+
+.chat-footer .chat-form:focus-within{
+  box-shadow: 0 0 0 2px #6D4FC2;
+}
+
+/* Input */
+.chat-form .message-input{
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 8px;
+  font-size: 14px;
+  color: #222;
+}
+
+.chat-form .message-input::placeholder{
+  color: #888;
+}
+
+/* Send button (fixed: grid centering + smooth show/hide) */
+.chat-form button{
+  height: 36px;
+  width: 36px;
+  border: none;
+  outline: none;
+  background: #6D4FC2;
+  color: #fff;
+  border-radius: 50%;
+  cursor: pointer;
+
+  display: grid;          /* ✅ required for place-items */
+  place-items: center;    /* ✅ centers icon/text */
+  flex-shrink: 0;
+
+  opacity: 0;             /* hidden by default */
+  pointer-events: none;   /* not clickable when hidden */
+  transform: scale(0.9);
+  transition: 0.2s ease;
+}
+
+.chat-form button:hover{
+  filter: brightness(0.95);
+}
+
+/* Show send button only when input is valid (non-empty due to required) */
+.chat-form .message-input:valid ~ button{
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+
+
+/* =============================================================================================================================================================================================================================================================================================== */
+
+
+.digital-twin-controls {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 100;
+
+  background: rgba(20, 25, 35, 0.9);
+  backdrop-filter: blur(10px);
+
+  border-radius: 12px;
+  padding: 14px 16px;
+
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  color: white;
+
+  font-family: system-ui;
+  min-width: 260px;
+}
+
+.dt-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.dt-row:last-child {
+  margin-bottom: 0;
+}
+
+.dt-btn {
+  background: #1f2937;
+  color: white;
+  border: 1px solid #374151;
+
+  padding: 6px 10px;
+  border-radius: 6px;
+
+  font-size: 13px;
+  cursor: pointer;
+
+  transition: all 0.15s ease;
+}
+
+.dt-btn:hover {
+  background: #374151;
+}
+
+.dt-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.dt-field {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  gap: 4px;
+}
+
+.dt-field select {
+  background: #1f2937;
+  color: white;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+.dt-chip {
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.dt-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dt-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.dt-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.room-info-textbox {
+  position: absolute;
+  z-index: 200;
+
+  background: rgba(15,18,25,0.96);
+  color: white;
+
+  padding: 14px 16px;
+  border-radius: 12px;
+
+  min-width: 260px;
+
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  border: 1px solid #2a2f3a;
+}
+
+.room-info-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.room-info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin: 3px 0;
+}
+
+.room-info-close {
+  position: absolute;
+  right: 8px;
+  top: 6px;
+
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.room-status-badge {
+  margin-top: 10px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  width: fit-content;
+}
+
+.room-status-badge.good {
+  background: #16a34a;
+}
+
+.room-status-badge.warning {
+  background: #f59e0b;
+}
+
+.room-status-badge.critical {
+  background: #ef4444;
+}
+
+.room-status-badge.no-data {
+  background: #6b7280;
+}
+
+/* ── Role picker animations ─────────────────────────────────────────── */
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(125,211,252,0.3); }
+  50%      { box-shadow: 0 0 0 12px rgba(125,211,252,0); }
+}

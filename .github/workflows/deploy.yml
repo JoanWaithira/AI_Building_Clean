@@ -1,0 +1,185 @@
+name: Deploy Docker Containers - GATE Building AI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "my-building/**"
+      - "backend/**"
+      - "mcpserver/**"
+      - "docker-compose.yml"
+      - ".github/workflows/deploy.yml"
+      - "building_forecast_system/**"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    env:
+      FORECAST_DB_HOST: ${{ secrets.FORECAST_DB_HOST }}
+      FORECAST_DB_PORT: ${{ secrets.FORECAST_DB_PORT }}
+      FORECAST_DB_NAME: ${{ secrets.FORECAST_DB_NAME }}
+      FORECAST_DB_USER: ${{ secrets.FORECAST_DB_USER }}
+      FORECAST_DB_PASSWORD: ${{ secrets.FORECAST_DB_PASSWORD }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_DATABASE_URL: ${{secrets.SUPABASE_DATABASE_URL}}
+
+      GATE_REALTIME_API_URL: ${{ secrets.GATE_REALTIME_API_URL }}
+      GATE_REALTIME_API_KEY: ${{ secrets.GATE_REALTIME_API_KEY }}
+
+      VITE_FORECAST_API_BASE: ${{ secrets.VITE_FORECAST_API_BASE }}
+      VITE_GATE_API_BASE: ${{ secrets.VITE_GATE_API_BASE }}
+      VITE_GATE_API_KEY: ""
+
+      WEATHER_LAT: ${{ secrets.WEATHER_LAT }}
+      WEATHER_LON: ${{ secrets.WEATHER_LON }}
+      OPENWEATHER_API_KEY: ""
+
+    defaults:
+      run:
+        shell: cmd
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Docker and Docker Compose
+        run: |
+          echo Verifying Docker and Docker Compose versions...
+          docker --version
+          docker compose version
+
+      - name: Stop existing containers
+        run: |
+          echo Stopping existing GATE Building AI containers if they exist...
+          docker compose down --remove-orphans
+
+      - name: Build and deploy containers
+        shell: powershell
+        run: |
+          Write-Host "Building and deploying GATE Building AI containers..."
+
+          docker compose up -d --build forecast-api frontend building-mcp cesium-mcp forecast-scheduler
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Initial Docker build failed. Cleaning Docker cache and retrying once..."
+
+            docker builder prune -af
+            docker image prune -af
+
+            docker compose build --no-cache forecast-api frontend building-mcp cesium-mcp forecast-scheduler
+
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "Docker rebuild failed after cache cleanup."
+              exit 1
+            }
+
+            docker compose up -d forecast-api frontend building-mcp cesium-mcp forecast-scheduler
+
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "Docker compose up failed after successful rebuild."
+              exit 1
+            }
+          }
+
+      - name: Show container status
+        run: |
+          docker compose ps
+
+      - name: Health Check For GATE Building AI
+        shell: powershell
+        run: |
+          $frontendUrl = "http://127.0.0.1:3008/gate-building-ai/"
+          $apiUrl = "http://127.0.0.1:8018/"
+          $dbHealthUrl = "http://127.0.0.1:8018/health/db"
+          $gateProxyUrl = "http://127.0.0.1:8018/gate-api/electricity/meta"
+          $buildingMcpUrl = "http://127.0.0.1:8091/mcp"
+          $cesiumMcpUrl = "http://127.0.0.1:8092/mcp"
+
+          $maxRetries = 6
+          $retryDelay = 10
+
+          function Test-Health($name, $url) {
+            Write-Host "Checking $name health at $url..."
+            for ($i = 1; $i -le $maxRetries; $i++) {
+              try {
+                $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 10
+                if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 300) {
+                  Write-Host "$name is healthy!"
+                  return $true
+                }
+              } catch {
+                Write-Host "Attempt $i - $name not ready yet (Status: $($_.Exception.Message))"
+              }
+              Start-Sleep -Seconds $retryDelay
+            }
+            return $false
+          }
+
+          function Test-McpHealth($name, $url) {
+            Write-Host "Checking $name health at $url..."
+            for ($i = 1; $i -le $maxRetries; $i++) {
+              try {
+                $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 10 -Headers @{ Accept = "text/event-stream" }
+                if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
+                  Write-Host "$name is responding!"
+                  return $true
+                }
+              } catch {
+                $statusCode = $null
+                if ($_.Exception.Response -ne $null) {
+                  $statusCode = [int]$_.Exception.Response.StatusCode
+                }
+
+                if ($statusCode -eq 400 -or $statusCode -eq 405 -or $statusCode -eq 406) {
+                Write-Host "$name is responding with expected MCP protocol status $statusCode."
+                return $true
+                }
+
+                Write-Host "Attempt $i - $name not ready yet (Status: $($_.Exception.Message))"
+              }
+              Start-Sleep -Seconds $retryDelay
+            }
+            return $false
+          }
+
+          $frontendHealthy = Test-Health "Frontend" $frontendUrl
+          $apiHealthy = Test-Health "Forecast API" $apiUrl
+          $dbHealthy = Test-Health "Forecast DB Health" $dbHealthUrl
+          $gateProxyHealthy = Test-Health "GATE API Proxy" $gateProxyUrl
+          $buildingMcpHealthy = Test-McpHealth "Building MCP" $buildingMcpUrl
+          $cesiumMcpHealthy = Test-McpHealth "Cesium MCP" $cesiumMcpUrl
+
+          $schedulerRunning = docker inspect -f "{{.State.Running}}" gate-forecast-scheduler 2>$null
+
+          if ($schedulerRunning -eq "true") {
+            Write-Host "Forecast Scheduler container is running!"
+          } else {
+            Write-Host "Forecast Scheduler container is not running."
+          }
+
+          if (-not ($frontendHealthy -and $apiHealthy -and $dbHealthy -and $gateProxyHealthy -and $buildingMcpHealthy -and $cesiumMcpHealthy -and ($schedulerRunning -eq "true"))) {
+            Write-Error "Services failed health check."
+
+            docker compose ps
+            docker compose logs --tail=100 forecast-api
+            docker compose logs --tail=100 frontend
+            docker compose logs --tail=100 building-mcp
+            docker compose logs --tail=100 cesium-mcp
+            docker compose logs --tail=100 forecast-scheduler
+
+            exit 1
+          }
+
+          Write-Host "All GATE Building AI services are healthy!"
+
+      - name: Prune unused Docker images
+        if: success()
+        run: |
+          echo Cleaning up unused Docker images...
+          docker image prune -f

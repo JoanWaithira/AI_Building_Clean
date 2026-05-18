@@ -1,0 +1,14 @@
+python-dotenv
+requests
+pandas
+pyarrow
+sqlalchemy
+psycopg2-binary
+fastapi
+uvicorn
+scikit-learn
+xgboost
+joblib
+matplotlib
+tensorflow
+apscheduler

@@ -1,0 +1,98 @@
+services:
+  forecast-api:
+    build:
+      context: ./backend
+    container_name: gate-forecast-api
+    restart: unless-stopped
+    environment:
+      FORECAST_DB_HOST: ${FORECAST_DB_HOST}
+      FORECAST_DB_PORT: ${FORECAST_DB_PORT}
+      FORECAST_DB_NAME: ${FORECAST_DB_NAME}
+      FORECAST_DB_USER: ${FORECAST_DB_USER}
+      FORECAST_DB_PASSWORD: ${FORECAST_DB_PASSWORD}
+      DATABASE_URL: ${DATABASE_URL}
+      GATE_REALTIME_API_URL: ${GATE_REALTIME_API_URL}
+      GATE_REALTIME_API_KEY: ${GATE_REALTIME_API_KEY}
+    ports:
+      - "127.0.0.1:8018:8000"
+
+  frontend:
+    build:
+      context: ./my-building
+      args:
+        VITE_FORECAST_API_BASE: ${VITE_FORECAST_API_BASE}
+        VITE_GATE_API_BASE: ${VITE_GATE_API_BASE}
+        VITE_GATE_API_KEY: ${VITE_GATE_API_KEY}
+        VITE_MCP_API_URL: ${VITE_MCP_API_URL}
+        VITE_MCP_CHAT_PATH: ${VITE_MCP_CHAT_PATH}
+    container_name: gate-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3008:80"
+    depends_on:
+      - forecast-api
+
+  building-mcp:
+    build:
+      context: ./mcpserver
+    container_name: gate-building-mcp
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8091
+      GATE_REALTIME_API_URL: ${GATE_REALTIME_API_URL}
+      GATE_REALTIME_API_KEY: ${GATE_REALTIME_API_KEY}
+      FORECAST_DB_HOST: ${FORECAST_DB_HOST}
+      FORECAST_DB_PORT: ${FORECAST_DB_PORT}
+      FORECAST_DB_NAME: ${FORECAST_DB_NAME}
+      FORECAST_DB_USER: ${FORECAST_DB_USER}
+      FORECAST_DB_PASSWORD: ${FORECAST_DB_PASSWORD}
+    command: ["python", "mcp-server.py", "--host", "0.0.0.0", "--port", "8091"]
+    ports:
+      - "127.0.0.1:8091:8091"
+
+  cesium-mcp:
+    build:
+      context: ./mcpserver
+    container_name: gate-cesium-mcp
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8092
+    command:
+      ["python", "cesium-mcpserver.py", "--host", "0.0.0.0", "--port", "8092"]
+    ports:
+      - "127.0.0.1:8092:8092"
+
+  forecast-scheduler:
+    build:
+      context: ./building_forecast_system
+    container_name: gate-forecast-scheduler
+    restart: unless-stopped
+    environment:
+      SOURCE_API_BASE_URL: ${GATE_REALTIME_API_URL}
+      SOURCE_API_KEY: ${GATE_REALTIME_API_KEY}
+      GATE_REALTIME_API_URL: ${GATE_REALTIME_API_URL}
+      GATE_REALTIME_API_KEY: ${GATE_REALTIME_API_KEY}
+
+      DATABASE_URL: ${DATABASE_URL}
+
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY}
+      SUPABASE_DATABASE_URL: ${SUPABASE_DATABASE_URL}
+
+      WEATHER_LAT: ${WEATHER_LAT}
+      WEATHER_LON: ${WEATHER_LON}
+      BUILDING_TIMEZONE: Europe/Sofia
+      TZ: Europe/Sofia
+
+    volumes:
+      - forecast_scheduler_data:/app/data
+      - forecast_scheduler_artifacts:/app/artifacts
+    command: ["python", "-m", "app.pipelines.scheduler"]
+    depends_on:
+      - forecast-api
+
+volumes:
+  forecast_scheduler_data:
+  forecast_scheduler_artifacts:

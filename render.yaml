@@ -1,0 +1,100 @@
+services:
+  - type: web
+    name: gate-forecast-api
+    runtime: python
+    rootDir: backend
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: FORECAST_CSV_DIR
+        value: /opt/render/project/src/my-building/public/floorplans
+
+  - type: web
+    name: gate-chat-api
+    runtime: python
+    rootDir: mcpserver
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python mcp-client.py
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: MCP_HOSTPORT
+        fromService:
+          type: pserv
+          name: gate-building-mcp
+          property: hostport
+      - key: CESIUM_MCP_HOSTPORT
+        fromService:
+          type: pserv
+          name: gate-cesium-mcp
+          property: hostport
+
+  - type: pserv
+    name: gate-building-mcp
+    runtime: python
+    rootDir: mcpserver
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python mcp-server.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10001
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: GATE_REALTIME_API_URL
+        value: https://citylab.gate-ai.eu/gate-building/api
+      - key: GATE_REALTIME_API_KEY
+        sync: false
+      - key: FORECAST_DB_HOST
+        sync: false
+      - key: FORECAST_DB_PORT
+        value: 5432
+      - key: FORECAST_DB_NAME
+        sync: false
+      - key: FORECAST_DB_USER
+        sync: false
+      - key: FORECAST_DB_PASSWORD
+        sync: false
+
+  - type: pserv
+    name: gate-cesium-mcp
+    runtime: python
+    rootDir: mcpserver
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python cesium-mcpserver.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10002
